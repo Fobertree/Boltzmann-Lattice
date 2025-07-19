@@ -1,15 +1,8 @@
 #version 330 core
 
-#ifdef GL_ES
-precision mediump float;
-#endif
-/*
-colormap glsl shader
-takes in textureposition
-*/
-in vec2 TexCoords;
-// rgba
-out vec4 color;
+// colormap glsl shader
+in vec2 TexCoords; // for sampler2D
+out vec4 FragColor;
 
 uniform sampler2D dataTexture; // 2D matrix data as texture
 uniform float minValue;
@@ -37,5 +30,5 @@ vec3 applyColormap(float value) {
 
 void main() {
     float value = texture(dataTexture, TexCoords).r; // sample data
-    color = vec4(applyColormap(value), 1.0);
+    FragColor = vec4(applyColormap(value), 1.0);
 }

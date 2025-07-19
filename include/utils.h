@@ -9,12 +9,13 @@
 #include <limits>
 #include <Eigen/Dense>
 
-#define IFUCKEDUP(mat)  \
-    printf("PRINT MAT: (%td %td)\n",mat.rows(), mat.cols()) \
+inline void IFUCKEDUP(Eigen::MatrixXd& mat) {
+    printf("PRINT MAT: (%td %td)\n",mat.rows(), mat.cols());
+}
 
 constexpr int WIDTH{800};
 constexpr int HEIGHT{800};
-constexpr const char* FRAG_SHADER_PATH = "../src/Shaders/red.frag";
+constexpr const char* FRAG_SHADER_PATH = "../src/Shaders/clm.frag";
 constexpr const char* VERT_SHADER_PATH = "../src/Shaders/tmp.vert";
 
 template <typename T, size_t N>

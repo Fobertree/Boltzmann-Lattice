@@ -46,7 +46,6 @@ bool fileExists(const char* fileName)
 }
 
 // VBO vertices: fullscreen quad
-// TODO: REMOVE THE TEXTURE COORDINATES (WE ARENT USING THEM)
 constexpr float vertices[] = {
         // Positions                    // texCoords
         -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
@@ -286,8 +285,8 @@ int main() {
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
         // clear + swap
-        glClear(GL_COLOR_BUFFER_BIT);
         glfwSwapBuffers(window);
+        glClear(GL_COLOR_BUFFER_BIT);
         glfwPollEvents();
     }
     return 0;

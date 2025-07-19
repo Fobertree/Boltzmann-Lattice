@@ -1,11 +1,13 @@
 #version 330 core
-// skip VBO for full-screen shader
 
-layout(location = 0) in vec2 vertexIn;
-out vec2 textureCoord;
+layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec2 aTexCoord;
 
-void main() {
-    // [-1,1] -> [0, -1]
-    textureCoord = vertexIn * 0.5 + 0.5;
-    gl_Position = vec4(vertexIn, 0.0, 1.0);
+// Output to the fragment shader
+out vec2 TexCoords;
+
+void main()
+{
+    gl_Position = vec4(aPos, 1.0);
+    TexCoords = aTexCoord;
 }

@@ -1,0 +1,13 @@
+x64/
+Testing/
+Debug/
+CMakeFiles/
+cmake-build-debug/
+.cmake/
+.idea/
+
+*.vcxproj
+*.vcxproj.filters
+*.sln
+cmake_install.cmake
+CMakeCache.txt

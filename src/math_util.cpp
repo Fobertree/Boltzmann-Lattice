@@ -19,34 +19,34 @@ void matrix_fill(MatrixXd& m, double num) {
     }
 }
 
-void roll(ThreeD& m, int shift, int axis) {
+void roll(ThreeD& m, int shift, int axis, int idx) {
+    // block ops to save time
+
+    if (idx > m.size()) {
+        printf("ROLL::IDX OUT OF BOUNDS");
+        return;
+    }
+    MatrixXd& submat = m[idx];
+
     if (axis == 0) {
         // by row
-        for (MatrixXd& submat : m) {
-            int rows = static_cast<int>(submat.rows());
-            if (rows == 0) continue;
-            shift = (shift & rows + rows) % rows;
+        int rows = static_cast<int>(submat.rows());
+        if (rows == 0) return;
+        int s = (shift % rows + rows) % rows;
 
-            MatrixXd rolled = submat;
-            for (int i = 0; i < rows; i++) {
-                rolled.row((i+shift) % rows) = submat.row(i);
-            }
-            submat = rolled;
-        }
+        MatrixXd tmp = submat;
+        submat.topRows(s) = tmp.bottomRows(s);
+        submat.bottomRows(rows - s) = tmp.topRows(rows - s);
     }
     else if (axis == 1) {
         // column
-        for (MatrixXd& submat : m) {
-            int cols = static_cast<int>(submat.cols());
-            if (cols == 0) continue;
-            shift = (shift % cols + cols) % cols;
+        int cols = static_cast<int>(submat.cols());
+        if (cols == 0) return;
+        int s = (shift % cols + cols) % cols;
 
-            MatrixXd rolled = submat;
-            for (int j = 0; j < cols; ++j) {
-                rolled.col((j + shift) % cols) = submat.col(j);
-            }
-            submat = rolled;
-        }
+        MatrixXd tmp = submat;
+        submat.leftCols(s) = tmp.rightCols(s);
+        submat.rightCols(cols - s) = tmp.leftCols(cols - s);
     }
 }
 
@@ -54,7 +54,6 @@ void roll(ThreeD& m, int shift, int axis) {
 MatrixXd apply_boundary(ThreeD& m, MatrixXb& boundary, int sz) {
     // bndryF = F[cylinder,:]
     constexpr static int col_sz = 9; // 9 point lattice
-    printf("apply_boundary::bndry: (%td %td). SZ: %d\n", boundary.rows(), boundary.cols(), sz);
 
     sz = 0;
 
@@ -100,11 +99,8 @@ void matrix_reorder(MatrixXd& m, const std::array<int, 9>& order) {
     for (int i = 0; i < 9; ++i) {
         perm.indices()(i) = order[i];
     }
-
-    printf("(%td, %td) x (%td, %td)\n", m.rows(), m.cols(), perm.rows(), perm.cols());
     // if want to permute rows, do perm * mat
     m = m * perm;
-    printf("success!\n");
 }
 
 MatrixXd sum_axis_two(ThreeD &m) {
@@ -170,7 +166,6 @@ void apply_bndry_to_F(ThreeD &F, const MatrixXb &bndry, const MatrixXd &bndryF) 
 }
 
 void apply_boundary_to_vel(MatrixXd &vel, MatrixXb &bndry) {
-    printf("%td %td\n", vel.rows(), vel.cols());
     for (int i = 0; i < vel.rows(); i++) {
         for (int j = 0; j < vel.cols(); j++) {
             if (bndry(i,j)) {

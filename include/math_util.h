@@ -39,7 +39,7 @@ constexpr std::array<double, 10> weights = {4./9., 1./9., 1./36., 1./9., 1./36.,
 // function declarations
 float squared_distance(float x1, float y1, float x2, float y2);
 
-void roll(ThreeD& m, int shift, int axis);
+void roll(ThreeD& m, int shift, int axis, int idx);
 
 // bndryF = F[cylinder,:]
 MatrixXd apply_boundary(ThreeD& m, MatrixXb& boundary, int sz);

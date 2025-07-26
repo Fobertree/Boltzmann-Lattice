@@ -8,6 +8,7 @@
 #include <array>
 #include <limits>
 #include <Eigen/Dense>
+#include <chrono>
 
 inline void IFUCKEDUP(Eigen::MatrixXd& mat) {
     printf("PRINT MAT: (%td %td)\n",mat.rows(), mat.cols());

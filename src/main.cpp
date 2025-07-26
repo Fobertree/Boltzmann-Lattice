@@ -12,11 +12,20 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <chrono>
 // throw a SIGINT to stop iterations
 
 // local includes
 #include "shader.h"
 #include "math_util.h"
+
+void print_timestamp(const std::chrono::time_point<std::chrono::steady_clock>& start) {
+    auto end = std::chrono::steady_clock::now();
+    auto duration = end - start;
+    auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds> (duration);
+
+    printf("Elapsed time::PRINT_TIMESTAMP: %lld ms\n", elapsed_ms.count());
+}
 
 // TODO: TMP VARIABLES, ADD A CONSTEXPR EVALUATION, MIGRATE THESE TO MATH_UTIL.H
 constexpr int CURL_ROWS = 98;
@@ -86,6 +95,10 @@ int main() {
 
     glViewport(0,0,WIDTH,HEIGHT);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
+    // for tracking fps
+    double lastTime = glfwGetTime();
+    int frameCount = 0;
 
     try {
         assert(fileExists(VERT_SHADER_PATH));
@@ -164,8 +177,8 @@ int main() {
     // shader parameters
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     // Allocate texture memory
     glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, CURL_COLS, CURL_ROWS, 0, GL_RED, GL_FLOAT, nullptr);
@@ -188,6 +201,21 @@ int main() {
     while (!glfwWindowShouldClose(window)) {
         // Zou-He absorb boundary conditions
         // smooth out fluid pressure at boundary by introducing curl?
+        auto start = std::chrono::steady_clock::now();
+        // TODO: rewrite F dimensions order
+        /*
+         * The last position represents timeseries window/snapshot of values at a specific timestep, this should be what's controlled by the vector container
+         * We need to make F as (NL, Ny, Nx), NOT (Ny, Nx, NL)
+         * Same case for Feq
+         * This allows more intuitive code and more "native" Eigen function calls which will greatly reduce overhead
+         * ::--Changes to Make--::
+         * F init, Feq init
+         * Boundary conditions: can access matrixXd by idx
+         * Streaming step: Self-explanatory
+         * Apply boundary (F[cylinder, :])
+         * Feq collision
+         */
+
         for (MatrixXd &mat: F) {
             mat(Ny - 1, 6) = mat(Ny - 2, 6);
             mat(Ny - 1, 7) = mat(Ny - 2, 7);
@@ -203,10 +231,12 @@ int main() {
             int cy = cys[i];
 
             // streaming step: roll
-            roll(F, cx, 1);
-            roll(F, cy, 0);
+            roll(F, cx, 1, i);
+            roll(F, cy, 0, i);
             // this is probably most prone to optimization
         }
+
+        print_timestamp(start);
 
         // apply bndry mask
         MatrixXd bndryF = apply_boundary(F, cylinder, bndry_sz);
@@ -239,8 +269,8 @@ int main() {
             double w = weights[i];
 
             // collision update
-            IFUCKEDUP(ux);
-            IFUCKEDUP(uy);
+//            IFUCKEDUP(ux);
+//            IFUCKEDUP(uy);
             MatrixXd weighted_square_matrix = (cx * ux + cy * uy).array().square();
             MatrixXd ux_sq = ux.array().square();
             MatrixXd uy_sq = uy.array().square();
@@ -249,7 +279,7 @@ int main() {
                                      (1. + 3. * (cx * ux + cy * uy).array() + 9. * (weighted_square_matrix).array() / 2. +
                                       (sum_sq).array() / 2.);
 
-            IFUCKEDUP(collision_val);
+//            IFUCKEDUP(collision_val);
             for (int i_feq = 0; i_feq < Feq.size(); i_feq++) {
                 MatrixXd& mat = Feq[i_feq];
                 for (int j = 0; j < mat.rows(); j++) {
@@ -273,6 +303,23 @@ int main() {
         // TMP ASSERTION UNTIL WE FIX CONSTEXPR
         assert(cols == CURL_COLS && rows == CURL_ROWS);
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> float_matrix = curl.cast<float>();
+
+        auto end = std::chrono::steady_clock::now();
+        auto duration = end - start;
+        auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds> (duration);
+
+        printf("Elapsed time: %lld ms\n", elapsed_ms.count());
+
+        // fps
+        double currentTime = glfwGetTime();
+        frameCount++;
+        if (currentTime - lastTime >= 1.0) {
+            double fps = static_cast<double>(frameCount) / (currentTime - lastTime);
+            printf("Current FPS: %.2f\n", fps);
+
+            frameCount = 0;
+            lastTime = currentTime;
+        }
 
         // opengl updates
         glUseProgram(shaderProgram.ID);

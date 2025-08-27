@@ -55,6 +55,7 @@ MatrixXd apply_boundary(ThreeD& m, MatrixXb& boundary, int sz) {
     // bndryF = F[cylinder,:]
     constexpr static int col_sz = 9; // 9 point lattice
 
+    // UNNECESSARY
     sz = 0;
 
     for (int i = 0; i < boundary.rows(); i++) {
@@ -92,6 +93,7 @@ void three_d_swap(ThreeD& m, const std::array<int, 9>& order) {
 
 void matrix_reorder(MatrixXd& m, const std::array<int, 9>& order) {
     // REORDER BY COLUMN
+    IFUCKEDUP(m);
     Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic> perm(9);
     auto perm_indices = perm.indices();
 
@@ -127,15 +129,11 @@ MatrixXd sum_axis_two(ThreeD &m) {
 ThreeD element_prod(ThreeD &m, const std::array<int, 9> &coeff) {
     // element-wise numpy style multiplication
     // m * coeff
-    ThreeD out(Ny, MatrixXd(Nx, NL));
+    ThreeD out(NL, MatrixXd(Ny, Nx));
     for (int i = 0; i < m.size(); i++) {
         out[i].setZero();
         auto & mat = m[i];
-        for (int j = 0; j < mat.rows(); j++) {
-            for (int k = 0; k < mat.cols(); k++) {
-                out[i](j,k) += mat(j,k) * coeff[k];
-            }
-        }
+        out[i] += mat * coeff[i];
     }
     return out;
 }
@@ -153,12 +151,13 @@ MatrixXd element_div(MatrixXd &m1, MatrixXd &m2) {
 }
 
 void apply_bndry_to_F(ThreeD &F, const MatrixXb &bndry, const MatrixXd &bndryF) {
-    // F[cylinder,:] = bndryF
-    for (int i = 0; i < F.size(); i++) {
-        MatrixXd& m = F[i];
-        for (int j = 0; j < F[i].rows(); j++) {
-            if (bndry(i,j)) {
-                m.row(j).setConstant(bndry(i,j));
+    // F[:,cylinder] = bndryF
+    for (MatrixXd& submat : F) {
+        for (int i = 0; i < F.size(); i++) {
+            for (int j = 0; j < F[i].rows(); j++) {
+                if (bndry(i, j)) {
+                    submat(i, j) = bndryF(i, j);
+                }
             }
         }
     }
@@ -184,5 +183,28 @@ MatrixXd get_curl(MatrixXd &ux, MatrixXd &uy) {
     // dfxdy = uy[1:-1, 2:] - uy[1:-1, 0:-2]
     MatrixXd dfxdy = uy(Eigen::seq(1, rows-2), Eigen::seq(2, cols-1)) -
             uy(Eigen::seq(1, rows-2), Eigen::seq(0, cols-3));
+
     return dfydx - dfxdy;
+}
+
+MatrixXd sum_axis_NL(ThreeD &m) {
+    MatrixXd out(Ny, Nx);
+    out.setConstant(0);
+
+    for (const MatrixXd& submat : m) {
+        out += submat;
+    }
+    return out;
+}
+
+template<typename T>
+void vector_reorder(std::vector<T> &vec, const std::vector<int> & order) {
+    for (int s = 1, d; s < order.size(); s++) {
+        for (d = order[s]; d < s; d = order[d]) {
+            if (d == s) {
+                while (d = order[d], d != s)
+                    std::swap(vec[s], vec[d]);
+            }
+        }
+    }
 }

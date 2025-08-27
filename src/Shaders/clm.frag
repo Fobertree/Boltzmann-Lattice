@@ -19,13 +19,14 @@ vec3 applyColormap(float value) {
     vec3 red = vec3(1.0, 0.0, 0.0);
 
     // interpolation
-    if (normalizedValue < 0.5) {
-        // Interpolate between blue and white
-        return mix(blue, white, normalizedValue * 2.0);
-    } else {
-        // Interpolate between white and red
-        return mix(white, red, (normalizedValue - 0.5) * 2.0);
-    }
+    return vec3(normalizedValue, 0., 0.5);
+//    if (normalizedValue < 0.5) {
+//        // Interpolate between blue and white
+//        return mix(blue, white, normalizedValue * 2.0);
+//    } else {
+//        // Interpolate between white and red
+//        return mix(white, red, (normalizedValue - 0.5) * 2.0);
+//    }
 }
 
 void main() {

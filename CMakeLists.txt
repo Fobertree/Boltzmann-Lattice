@@ -4,12 +4,14 @@ project(BoltzmannLattice)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_GENERATOR_PLATFORM "x64")
 
+add_compile_options(-O3)
+
 include_directories(include)
 include("C:/Users/Alexa/.vcpkg-clion/vcpkg/scripts/buildsystems/vcpkg.cmake")
 
 find_package(OpenGL REQUIRED)
 # below packages installed via vcpkg
-find_package(glfw3 REQUIRED)
+find_package(glfw3 REQUIRED 3.4.0)
 find_package(glad REQUIRED)
 find_package(glm REQUIRED)
 find_package(Eigen3 REQUIRED)

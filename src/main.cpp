@@ -76,7 +76,7 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 
-    GLFWwindow  *window = glfwCreateWindow(WIDTH,HEIGHT, "grid", nullptr,nullptr);
+    GLFWwindow  *window = glfwCreateWindow(WIDTH,HEIGHT, "FML", nullptr,nullptr);
 
     if (window == nullptr)
     {
@@ -111,27 +111,25 @@ int main() {
     Shader shaderProgram = Shader(VERT_SHADER_PATH, FRAG_SHADER_PATH);
 
     // end glfw and shader init
-    ThreeD F(Ny, MatrixXd(Nx, NL));
+    ThreeD F(NL, MatrixXd(Ny, Nx));
+    ThreeD Feq = ThreeD(NL, MatrixXd(Ny, Nx));
 
     for (MatrixXd& mat : F) {
         constexpr static double coeff{0.01};
         mat.fill(1);
-        mat.setConstant(true);
-        MatrixXd rand(Nx, NL);
+        // TODO: THIS IS UNIFORM DISTRIBUTION, NOT GAUSSIAN DISTRIBUTION
+        MatrixXd rand(Ny, Nx);
         rand.setRandom();
         rand = rand * coeff;
 
         mat = mat + rand;
-
-        // set rightward velocity
-        for (int i = 0; i < mat.rows(); i++) {
-            mat(i, 3) = RIGHT_VEL;
-        }
     }
 
+    // rightward velocity
+    F[3].setConstant(RIGHT_VEL);
+
     MatrixXb cylinder = MatrixXb(Ny, Nx);
-    cylinder.setConstant(true);
-    cylinder.fill(false);
+    cylinder.setConstant(false);
     int bndry_sz{0};
 
     for (int y = 0; y < Ny; y++) {
@@ -144,6 +142,16 @@ int main() {
             }
         }
     }
+
+    // should be inlined with optimized flag (I hope)
+    // TODO: check from here
+    auto horizBoundary = [&](int idx_NL, int idx_Ny) -> void {
+        F[idx_NL](idx_Ny, Nx-1) = F[idx_NL](idx_Ny, Nx-2);
+    };
+
+    auto vertBoundary = [&](int idx_NL, int idx_Ny) -> void {
+        F[idx_NL](idx_Ny, 0) = F[idx_NL](idx_Ny, 1);
+    };
 
     // continue openGL setup
     unsigned int VAO;
@@ -216,19 +224,20 @@ int main() {
          * Feq collision
          */
 
-        for (MatrixXd &mat: F) {
-            mat(Ny - 1, 6) = mat(Ny - 2, 6);
-            mat(Ny - 1, 7) = mat(Ny - 2, 7);
-            mat(Ny - 1, 8) = mat(Ny - 2, 8);
+        for (int i = 0; i < Ny; i++) {
+            horizBoundary(6, i);
+            horizBoundary(7, i);
+            horizBoundary(8, i);
 
-            mat(0, 2) = mat(1, 2);
-            mat(0, 3) = mat(1, 3);
-            mat(0, 4) = mat(1, 4);
+            vertBoundary(2, i);
+            vertBoundary(3,i);
+            vertBoundary(4,i);
         }
 
         for (int i = 0; i < NL; i++) {
             int cx = cxs[i];
             int cy = cys[i];
+            // TODO: i think roll is right
 
             // streaming step: roll
             roll(F, cx, 1, i);
@@ -239,27 +248,29 @@ int main() {
         print_timestamp(start);
 
         // apply bndry mask
+        // TODO: I THINK THIS IS WRONG
         MatrixXd bndryF = apply_boundary(F, cylinder, bndry_sz);
         // reorder lattice points by column
         matrix_reorder(bndryF, {0, 5, 6, 7, 8, 1, 2, 3, 4});
-        MatrixXd rho = sum_axis_two(F);
+        // TODO: rewrite sum_axis_two to sum along NL
+        MatrixXd rho = sum_axis_NL(F);
 
         // pass by value or reference in sum_axis_two? currently pass by ref but two LOC
         ThreeD tmp_x = element_prod(F, cxs);
-        MatrixXd tmp_sum_x = sum_axis_two(tmp_x);
+        MatrixXd tmp_sum_x = sum_axis_NL(tmp_x);
         MatrixXd ux = element_div(tmp_sum_x, rho);
 
         ThreeD tmp_y = element_prod(F, cys);
-        MatrixXd tmp_sum_y = sum_axis_two(tmp_y);
+        MatrixXd tmp_sum_y = sum_axis_NL(tmp_y);
         MatrixXd uy = element_div(tmp_sum_y, rho);
 
         // apply boundary
+        // TODO: check apply_bndry_to_F
         apply_bndry_to_F(F, cylinder, bndryF);
         apply_boundary_to_vel(ux, cylinder);
         apply_boundary_to_vel(uy, cylinder);
 
         // collision
-        ThreeD Feq = ThreeD(Ny, MatrixXd(Nx, NL));
         for (MatrixXd &mat: Feq) {
             mat.setZero();
         }
@@ -276,16 +287,9 @@ int main() {
             MatrixXd uy_sq = uy.array().square();
             MatrixXd sum_sq = ux_sq + uy_sq;
             MatrixXd collision_val = (rho * w).array() *
-                                     (1. + 3. * (cx * ux + cy * uy).array() + 9. * (weighted_square_matrix).array() / 2. +
-                                      (sum_sq).array() / 2.);
-
-//            IFUCKEDUP(collision_val);
-            for (int i_feq = 0; i_feq < Feq.size(); i_feq++) {
-                MatrixXd& mat = Feq[i_feq];
-                for (int j = 0; j < mat.rows(); j++) {
-                    mat.row(j).setConstant(collision_val(i_feq,j));
-                }
-            }
+                                     (1. + 3. * (cx * ux + cy * uy).array() + 9. * (weighted_square_matrix).array() / 2.
+                                     - 3 * (sum_sq).array() / 2.);
+            Feq[i] = std::move(collision_val);
         }
         // F = F  +-(1/tau) * (F-Feq)
         for (int i = 0; i < F.size(); i++) {
@@ -302,20 +306,25 @@ int main() {
         static const int rows = static_cast<int>(curl.rows());
         // TMP ASSERTION UNTIL WE FIX CONSTEXPR
         assert(cols == CURL_COLS && rows == CURL_ROWS);
+//        std::cout << curl << std::endl;
+//        MatrixXd float_matrix = curl.matrix();
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> float_matrix = curl.cast<float>();
+
+        // show velocity instead of curl
+//        float_matrix = (ux.array().square() + uy.array().square()).sqrt().matrix();
 
         auto end = std::chrono::steady_clock::now();
         auto duration = end - start;
         auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds> (duration);
 
-        printf("Elapsed time: %lld ms\n", elapsed_ms.count());
+//        printf("Elapsed time: %lld ms\n", elapsed_ms.count());
 
         // fps
         double currentTime = glfwGetTime();
         frameCount++;
         if (currentTime - lastTime >= 1.0) {
             double fps = static_cast<double>(frameCount) / (currentTime - lastTime);
-            printf("Current FPS: %.2f\n", fps);
+//            printf("Current FPS: %.2f\n", fps);
 
             frameCount = 0;
             lastTime = currentTime;

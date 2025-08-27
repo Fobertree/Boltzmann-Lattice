@@ -21,7 +21,7 @@ constexpr int Nx = 400;
 constexpr int Ny = 100;
 constexpr double tau = 0.53;
 constexpr int Nt = 30000;
-constexpr int NL = 9;
+constexpr int NL = 9;                 // lattice points/directions
 constexpr double RIGHT_VEL = 2.3;
 constexpr double CYLINDER_RADIUS_SQUARED = 13 * 13;
 
@@ -44,9 +44,16 @@ void roll(ThreeD& m, int shift, int axis, int idx);
 // bndryF = F[cylinder,:]
 MatrixXd apply_boundary(ThreeD& m, MatrixXb& boundary, int sz);
 
+// DEPRECATED
 void matrix_reorder(MatrixXd& m, const std::array<int, 9>& order);
 
+template<typename T>
+void vector_reorder(std::vector<T>& vec, const std::vector<size_t>& order);
+
+// DEPRECATED
 MatrixXd sum_axis_two(ThreeD& m);
+
+MatrixXd sum_axis_NL(ThreeD& m);
 
 // name is a bit of a misnomer, just built for this program
 ThreeD element_prod(ThreeD& m, const std::array<int, 9>& coeff);

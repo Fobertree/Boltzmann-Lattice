@@ -10,14 +10,14 @@
 #include <Eigen/Dense>
 #include <chrono>
 
-inline void IFUCKEDUP(Eigen::MatrixXd& mat) {
+inline void IFUCKEDUP(const Eigen::MatrixXd& mat)  {
     printf("PRINT MAT: (%td %td)\n",mat.rows(), mat.cols());
 }
 
 constexpr int WIDTH{800};
 constexpr int HEIGHT{800};
-constexpr const char* FRAG_SHADER_PATH = "../src/Shaders/clm.frag";
-constexpr const char* VERT_SHADER_PATH = "../src/Shaders/tmp.vert";
+constexpr const char* FRAG_SHADER_PATH = R"(C:\Users\Alexa\OneDrive - Emory University\Desktop\CPPProjects\Boltzmann_Lattice_CFD\src\Shaders\clm.frag)";
+constexpr const char* VERT_SHADER_PATH = R"(C:\Users\Alexa\OneDrive - Emory University\Desktop\CPPProjects\Boltzmann_Lattice_CFD\src\Shaders\tmp.vert)";
 
 template <typename T, size_t N>
 constexpr T sum(const std::array<T, N>& arr) {

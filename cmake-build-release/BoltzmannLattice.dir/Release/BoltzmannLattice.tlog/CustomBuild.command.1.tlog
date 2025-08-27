@@ -1,0 +1,10 @@
+^C:\USERS\ALEXA\ONEDRIVE - EMORY UNIVERSITY\DESKTOP\CPPPROJECTS\BOLTZMANN_LATTICE_CFD\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\JetBrains\CLion 2023.3.2\bin\cmake\win\x64\bin\cmake.exe" "-SC:/Users/Alexa/OneDrive - Emory University/Desktop/CPPProjects/Boltzmann_Lattice_CFD" "-BC:/Users/Alexa/OneDrive - Emory University/Desktop/CPPProjects/Boltzmann_Lattice_CFD/cmake-build-release" --check-stamp-file "C:/Users/Alexa/OneDrive - Emory University/Desktop/CPPProjects/Boltzmann_Lattice_CFD/cmake-build-release/CMakeFiles/generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

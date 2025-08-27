@@ -16,8 +16,9 @@ inline void IFUCKEDUP(const Eigen::MatrixXd& mat)  {
 
 constexpr int WIDTH{800};
 constexpr int HEIGHT{800};
-constexpr const char* FRAG_SHADER_PATH = R"(C:\Users\Alexa\OneDrive - Emory University\Desktop\CPPProjects\Boltzmann_Lattice_CFD\src\Shaders\clm.frag)";
-constexpr const char* VERT_SHADER_PATH = R"(C:\Users\Alexa\OneDrive - Emory University\Desktop\CPPProjects\Boltzmann_Lattice_CFD\src\Shaders\tmp.vert)";
+constexpr const char* FRAG_SHADER_PATH = "/Users/alexanderliu/CLionProjects/Boltzmann-Lattice/src/Shaders/clm.frag";
+constexpr const char* VERT_SHADER_PATH = "/Users/alexanderliu/CLionProjects/Boltzmann-Lattice/src/Shaders/tmp.vert";
+constexpr bool CURL_FLAG = false;
 
 template <typename T, size_t N>
 constexpr T sum(const std::array<T, N>& arr) {

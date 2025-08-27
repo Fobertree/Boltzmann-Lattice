@@ -2,12 +2,12 @@ cmake_minimum_required(VERSION 3.27)
 project(BoltzmannLattice)
 
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_GENERATOR_PLATFORM "x64")
+#set(CMAKE_GENERATOR_PLATFORM "x64")
 
 add_compile_options(-O3)
 
 include_directories(include)
-include("C:/Users/Alexa/.vcpkg-clion/vcpkg/scripts/buildsystems/vcpkg.cmake")
+#include("C:/Users/Alexa/.vcpkg-clion/vcpkg/scripts/buildsystems/vcpkg.cmake")
 
 find_package(OpenGL REQUIRED)
 # below packages installed via vcpkg

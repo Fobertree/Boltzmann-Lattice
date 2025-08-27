@@ -66,6 +66,8 @@ void apply_boundary_to_vel(MatrixXd& vel, MatrixXb& bndry);
 
 MatrixXd get_curl(MatrixXd& ux, MatrixXd& uy);
 
+MatrixXd get_velo(const ThreeD& F, const std::array<int, 9>& coeffs, const MatrixXd& rho);
+
 // end necessary functions
 
 

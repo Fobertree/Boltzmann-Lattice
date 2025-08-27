@@ -51,11 +51,11 @@ void roll(ThreeD& m, int shift, int axis, int idx) {
 }
 
 
-MatrixXd apply_boundary(ThreeD& m, MatrixXb& boundary, int sz) {
+MatrixXd apply_boundary(ThreeD& F, MatrixXb& boundary, int sz) {
     // bndryF = F[cylinder,:]
+    // F
+    // TODO: This doesn't seem right
     constexpr static int col_sz = 9; // 9 point lattice
-
-    // UNNECESSARY
     sz = 0;
 
     for (int i = 0; i < boundary.rows(); i++) {
@@ -65,15 +65,32 @@ MatrixXd apply_boundary(ThreeD& m, MatrixXb& boundary, int sz) {
     }
 
     MatrixXd out(sz, col_sz);
+    out.setZero();
     int out_idx{0};
 
-    for (int i = 0; i < m.size(); i++) {
-        for (int j = 0; j < m[0].rows(); j++) {
+    for (int i = 0; i < F[0].rows(); i++) {             // Ny
+        for (int j = 0; j < F[0].cols(); j++) {         // Nx
             if (boundary(i,j)) {
-                out.row(out_idx++) = m[i].row(j);
+                // ThreeD[NL][Ny]
+//                out.row(out_idx++) = F[i].row(j);
+                Eigen::VectorXd newRow(col_sz);
+                newRow <<
+                        F[0](i,j),
+                        F[5](i,j),
+                        F[6](i,j),
+                        F[7](i,j),
+                        F[8](i,j),
+                        F[1](i,j),
+                        F[2](i,j),
+                        F[3](i,j),
+                        F[4](i,j);
+
+                out.row(out_idx++) = newRow;
             }
         }
     }
+
+
     return out;
 }
 
@@ -93,7 +110,6 @@ void three_d_swap(ThreeD& m, const std::array<int, 9>& order) {
 
 void matrix_reorder(MatrixXd& m, const std::array<int, 9>& order) {
     // REORDER BY COLUMN
-    IFUCKEDUP(m);
     Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic> perm(9);
     auto perm_indices = perm.indices();
 
@@ -161,7 +177,6 @@ void apply_bndry_to_F(ThreeD &F, const MatrixXb &bndry, const MatrixXd &bndryF) 
             }
         }
     }
-    printf("OK\n");
 }
 
 void apply_boundary_to_vel(MatrixXd &vel, MatrixXb &bndry) {
@@ -195,6 +210,17 @@ MatrixXd sum_axis_NL(ThreeD &m) {
         out += submat;
     }
     return out;
+}
+
+MatrixXd get_velo(const ThreeD &F, const std::array<int, 9> &coeffs, const MatrixXd& rho) {
+    MatrixXd vel(Ny, Nx); // (Ny, Nx)
+    vel.setZero();
+
+    for (int i = 0; i < NL; i++)
+        vel += (F[i].array() * static_cast<double>(coeffs[i])).matrix();
+
+    vel = vel.cwiseQuotient(rho);
+    return vel;
 }
 
 template<typename T>

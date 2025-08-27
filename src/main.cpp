@@ -46,6 +46,9 @@ void processInput(GLFWwindow *window)
 
 bool fileExists(const char* fileName)
 {
+    std::filesystem::path currentPath = std::filesystem::current_path();
+    std::cout << "Current Working Directory: " <<  currentPath << std::endl;
+
     std::ifstream test(fileName);
     if (test) {
         return true;
@@ -206,6 +209,10 @@ int main() {
 
     // main loop
     // TODO: set this to infinite loop with signal mask for SIGINT from ctrl+c
+
+    // necessary narrowing conversion for sampler2D texture (vec2 float)
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> float_matrix;
+
     while (!glfwWindowShouldClose(window)) {
         // Zou-He absorb boundary conditions
         // smooth out fluid pressure at boundary by introducing curl?
@@ -245,24 +252,27 @@ int main() {
             // this is probably most prone to optimization
         }
 
-        print_timestamp(start);
+//        print_timestamp(start);
 
         // apply bndry mask
-        // TODO: I THINK THIS IS WRONG
+        // [cylinder_sz, NL]
         MatrixXd bndryF = apply_boundary(F, cylinder, bndry_sz);
         // reorder lattice points by column
-        matrix_reorder(bndryF, {0, 5, 6, 7, 8, 1, 2, 3, 4});
+//        matrix_reorder(bndryF, {0, 5, 6, 7, 8, 1, 2, 3, 4});
         // TODO: rewrite sum_axis_two to sum along NL
+        // TODO: FIX this rho
+        // TODO: ux, uy seem completely wrong for sure. Investigate F * cxs, F * cys
         MatrixXd rho = sum_axis_NL(F);
 
         // pass by value or reference in sum_axis_two? currently pass by ref but two LOC
-        ThreeD tmp_x = element_prod(F, cxs);
-        MatrixXd tmp_sum_x = sum_axis_NL(tmp_x);
-        MatrixXd ux = element_div(tmp_sum_x, rho);
+        MatrixXd ux = get_velo(F, cxs, rho);
+        MatrixXd uy = get_velo(F, cys, rho);
 
-        ThreeD tmp_y = element_prod(F, cys);
-        MatrixXd tmp_sum_y = sum_axis_NL(tmp_y);
-        MatrixXd uy = element_div(tmp_sum_y, rho);
+        std::cout << "rho min=" << bndryF.minCoeff() << " max=" << bndryF.maxCoeff() << std::endl;
+//        std::cout << "ux min=" << ux.minCoeff() << " max=" << ux.maxCoeff() << std::endl;
+//        std::cout << "uy min=" << uy.minCoeff() << " max=" << uy.maxCoeff() << std::endl;
+
+        float_matrix = ux.cast<float>();
 
         // apply boundary
         // TODO: check apply_bndry_to_F
@@ -280,8 +290,6 @@ int main() {
             double w = weights[i];
 
             // collision update
-//            IFUCKEDUP(ux);
-//            IFUCKEDUP(uy);
             MatrixXd weighted_square_matrix = (cx * ux + cy * uy).array().square();
             MatrixXd ux_sq = ux.array().square();
             MatrixXd uy_sq = uy.array().square();
@@ -300,18 +308,26 @@ int main() {
 
         // calculate curl and plot
         MatrixXd curl = get_curl(ux, uy);
-        // TODO: add shader to window by passing it into a VAO with a full-screen quad
-        // TODO: Add OpenGL
         static const int cols = static_cast<int>(curl.cols());
         static const int rows = static_cast<int>(curl.rows());
         // TMP ASSERTION UNTIL WE FIX CONSTEXPR
         assert(cols == CURL_COLS && rows == CURL_ROWS);
 //        std::cout << curl << std::endl;
 //        MatrixXd float_matrix = curl.matrix();
-        Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> float_matrix = curl.cast<float>();
 
-        // show velocity instead of curl
-//        float_matrix = (ux.array().square() + uy.array().square()).sqrt().matrix();
+        if (CURL_FLAG) {
+            float_matrix = curl.cast<float>();
+//            IFUCKEDUP(curl);
+        }
+        else {
+            // show velocity instead of curl
+            MatrixXd l2Mat = (ux.array().square() + uy.array().square()).sqrt().matrix();
+//            std::cout << "OK: " << l2Mat << std::endl;
+            // TODO: SOMETHING WRONG WITH BOTH UX AND UY: SHEARED/ROTATED MATRIX
+            float_matrix = l2Mat.cast<float>();
+            IFUCKEDUP(l2Mat);
+
+        }
 
         auto end = std::chrono::steady_clock::now();
         auto duration = end - start;

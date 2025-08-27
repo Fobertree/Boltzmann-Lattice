@@ -10,6 +10,8 @@ uniform float maxValue;
 
 vec3 applyColormap(float value) {
     float normalizedValue = (value - minValue) / (maxValue - minValue);
+    vec3 hexColor1 = vec3(0.69, 0.576, 0.929); // 176, 147, 237
+    vec3 hexColor2 = vec3(0.,0.,0.);
 
     normalizedValue = clamp(normalizedValue, 0.0, 1.0);
 
@@ -19,7 +21,8 @@ vec3 applyColormap(float value) {
     vec3 red = vec3(1.0, 0.0, 0.0);
 
     // interpolation
-    return vec3(normalizedValue, 0., 0.5);
+    return mix(hexColor2, hexColor1, value);
+//    return vec3(normalizedValue, 0., 0.5);
 //    if (normalizedValue < 0.5) {
 //        // Interpolate between blue and white
 //        return mix(blue, white, normalizedValue * 2.0);

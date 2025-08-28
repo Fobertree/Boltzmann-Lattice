@@ -54,7 +54,6 @@ void roll(ThreeD& m, int shift, int axis, int idx) {
 MatrixXd apply_boundary(ThreeD& F, MatrixXb& boundary, int sz) {
     // bndryF = F[cylinder,:]
     // F
-    // TODO: This doesn't seem right
     constexpr static int col_sz = 9; // 9 point lattice
     sz = 0;
 
@@ -91,78 +90,6 @@ MatrixXd apply_boundary(ThreeD& F, MatrixXb& boundary, int sz) {
     }
 
 
-    return out;
-}
-
-void three_d_swap(ThreeD& m, const std::array<int, 9>& order) {
-    Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic> perm(9);
-    auto perm_indices = perm.indices();
-
-    Eigen::VectorXd indices(9);
-    for (int i = 0; i < 9; ++i) {
-        perm_indices(i) = order[i];
-    }
-
-    for (auto & mat : m) {
-        mat = mat * perm;
-    }
-}
-
-void matrix_reorder(MatrixXd& m, const std::array<int, 9>& order) {
-    // REORDER BY COLUMN
-    Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic> perm(9);
-    auto perm_indices = perm.indices();
-
-//    Eigen::VectorXd indices(9);
-    for (int i = 0; i < 9; ++i) {
-        perm.indices()(i) = order[i];
-    }
-    // if want to permute rows, do perm * mat
-    m = m * perm;
-}
-
-MatrixXd sum_axis_two(ThreeD &m) {
-    // return matrixXd or ThreeD (vector of MatrixXd)
-    // emulate np.sum axis = 2
-    // np.sum flattens a dimension, so just return a MatrixXd
-    if (m.empty()) return {};
-
-    MatrixXd out(m.size(), m[0].rows());
-    out.setZero();
-
-    for (int i = 0; i < m.size(); i++) {
-        MatrixXd& mat = m[i];
-        // create new MatrixXd for sum axis 2
-        for (int j = 0; j < mat.rows(); j++) {
-            for (int k = 0; k < mat.cols(); k++) {
-                out(i,j) += mat(j,k);
-            }
-        }
-    }
-    return out;
-}
-
-ThreeD element_prod(ThreeD &m, const std::array<int, 9> &coeff) {
-    // element-wise numpy style multiplication
-    // m * coeff
-    ThreeD out(NL, MatrixXd(Ny, Nx));
-    for (int i = 0; i < m.size(); i++) {
-        out[i].setZero();
-        auto & mat = m[i];
-        out[i] += mat * coeff[i];
-    }
-    return out;
-}
-
-MatrixXd element_div(MatrixXd &m1, MatrixXd &m2) {
-    assert(m1.rows() == m2.rows() && m1.cols() == m2.cols());
-    MatrixXd out(m1.rows(), m1.cols());
-
-    for (int i = 0; i < m1.rows(); i++) {
-        for (int j = 0; j < m1.cols(); j++) {
-            out(i, j) = m1(i, j) / m2(i, j);
-        }
-    }
     return out;
 }
 

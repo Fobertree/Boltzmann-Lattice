@@ -33,8 +33,8 @@ public:
         try
         {
             // path join
-//            std::cout << "VERTEX PATH: " << std::filesystem::canonical(std::filesystem::current_path() / vertexPath) << std::endl;
-//            std::cout << "FRAG PATH: " << std::filesystem::canonical(std::filesystem::current_path() / fragmentPath) << std::endl;
+            // std::cout << "VERTEX PATH: " << std::filesystem::canonical(std::filesystem::current_path() / vertexPath) << std::endl;
+            // std::cout << "FRAG PATH: " << std::filesystem::canonical(std::filesystem::current_path() / fragmentPath) << std::endl;
 
             // open files
             vShaderFile.open(vertexPath);

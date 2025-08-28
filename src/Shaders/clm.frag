@@ -12,24 +12,9 @@ vec3 applyColormap(float value) {
     float normalizedValue = (value - minValue) / (maxValue - minValue);
     vec3 hexColor1 = vec3(0.69, 0.576, 0.929); // 176, 147, 237
     vec3 hexColor2 = vec3(0.,0.,0.);
-
-    normalizedValue = clamp(normalizedValue, 0.0, 1.0);
-
-    // default color pallete
-    vec3 blue = vec3(0.0, 0.0, 1.0);
-    vec3 white = vec3(1.0, 1.0, 1.0);
-    vec3 red = vec3(1.0, 0.0, 0.0);
-
     // interpolation
-    return mix(hexColor2, hexColor1, value);
-//    return vec3(normalizedValue, 0., 0.5);
-//    if (normalizedValue < 0.5) {
-//        // Interpolate between blue and white
-//        return mix(blue, white, normalizedValue * 2.0);
-//    } else {
-//        // Interpolate between white and red
-//        return mix(white, red, (normalizedValue - 0.5) * 2.0);
-//    }
+    // this shader can be done better
+    return mix(hexColor2, hexColor1, value * 2.3);
 }
 
 void main() {

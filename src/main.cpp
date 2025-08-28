@@ -13,6 +13,7 @@
 #include <vector>
 #include <fstream>
 #include <chrono>
+#include <random>
 // throw a SIGINT to stop iterations
 
 // local includes
@@ -60,10 +61,10 @@ bool fileExists(const char* fileName)
 // VBO vertices: fullscreen quad
 constexpr float vertices[] = {
         // Positions                    // texCoords
-        -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
-        1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
-        1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
-        -1.0f, -1.0f, 0.0f, 0.0f, 0.0f
+        -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,     // top-left
+        1.0f,  1.0f, 0.0f, 1.0f, 1.0f,      // top-right
+        1.0f, -1.0f, 0.0f, 1.0f, 0.0f,  // bottom-right
+        -1.0f, -1.0f, 0.0f, 0.0f, 0.0f  // bottom-left
 };
 
 // EBO to collapse 6 vertices into 4
@@ -79,7 +80,7 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 
-    GLFWwindow  *window = glfwCreateWindow(WIDTH,HEIGHT, "FML", nullptr,nullptr);
+    GLFWwindow  *window = glfwCreateWindow(WIDTH,HEIGHT, "Boltzmann Lattice", nullptr,nullptr);
 
     if (window == nullptr)
     {
@@ -120,9 +121,17 @@ int main() {
     for (MatrixXd& mat : F) {
         constexpr static double coeff{0.01};
         mat.fill(1);
-        // TODO: THIS IS UNIFORM DISTRIBUTION, NOT GAUSSIAN DISTRIBUTION
+        // Gaussian distribution sampling
         MatrixXd rand(Ny, Nx);
-        rand.setRandom();
+        std::random_device rd;
+        std::mt19937 gen(rd()); // Mersenne Twister PRNG Engine
+        std::normal_distribution dist(0.0, 1.0);
+
+        for (int i = 0; i < Ny; i++) {
+            for (int j = 0; j < Nx; j++) {
+                rand(i,j) = dist(gen);
+            }
+        }
         rand = rand * coeff;
 
         mat = mat + rand;
@@ -217,19 +226,6 @@ int main() {
         // Zou-He absorb boundary conditions
         // smooth out fluid pressure at boundary by introducing curl?
         auto start = std::chrono::steady_clock::now();
-        // TODO: rewrite F dimensions order
-        /*
-         * The last position represents timeseries window/snapshot of values at a specific timestep, this should be what's controlled by the vector container
-         * We need to make F as (NL, Ny, Nx), NOT (Ny, Nx, NL)
-         * Same case for Feq
-         * This allows more intuitive code and more "native" Eigen function calls which will greatly reduce overhead
-         * ::--Changes to Make--::
-         * F init, Feq init
-         * Boundary conditions: can access matrixXd by idx
-         * Streaming step: Self-explanatory
-         * Apply boundary (F[cylinder, :])
-         * Feq collision
-         */
 
         for (int i = 0; i < Ny; i++) {
             horizBoundary(6, i);
@@ -244,7 +240,6 @@ int main() {
         for (int i = 0; i < NL; i++) {
             int cx = cxs[i];
             int cy = cys[i];
-            // TODO: i think roll is right
 
             // streaming step: roll
             roll(F, cx, 1, i);
@@ -252,30 +247,17 @@ int main() {
             // this is probably most prone to optimization
         }
 
-//        print_timestamp(start);
-
         // apply bndry mask
         // [cylinder_sz, NL]
         MatrixXd bndryF = apply_boundary(F, cylinder, bndry_sz);
         // reorder lattice points by column
-//        matrix_reorder(bndryF, {0, 5, 6, 7, 8, 1, 2, 3, 4});
-        // TODO: rewrite sum_axis_two to sum along NL
-        // TODO: FIX this rho
-        // TODO: ux, uy seem completely wrong for sure. Investigate F * cxs, F * cys
         MatrixXd rho = sum_axis_NL(F);
 
         // pass by value or reference in sum_axis_two? currently pass by ref but two LOC
         MatrixXd ux = get_velo(F, cxs, rho);
         MatrixXd uy = get_velo(F, cys, rho);
 
-        std::cout << "rho min=" << bndryF.minCoeff() << " max=" << bndryF.maxCoeff() << std::endl;
-//        std::cout << "ux min=" << ux.minCoeff() << " max=" << ux.maxCoeff() << std::endl;
-//        std::cout << "uy min=" << uy.minCoeff() << " max=" << uy.maxCoeff() << std::endl;
-
-        float_matrix = ux.cast<float>();
-
         // apply boundary
-        // TODO: check apply_bndry_to_F
         apply_bndry_to_F(F, cylinder, bndryF);
         apply_boundary_to_vel(ux, cylinder);
         apply_boundary_to_vel(uy, cylinder);
@@ -308,39 +290,31 @@ int main() {
 
         // calculate curl and plot
         MatrixXd curl = get_curl(ux, uy);
-        static const int cols = static_cast<int>(curl.cols());
-        static const int rows = static_cast<int>(curl.rows());
-        // TMP ASSERTION UNTIL WE FIX CONSTEXPR
-        assert(cols == CURL_COLS && rows == CURL_ROWS);
-//        std::cout << curl << std::endl;
-//        MatrixXd float_matrix = curl.matrix();
 
         if (CURL_FLAG) {
+            // PLOT CURL: (98, 398)
             float_matrix = curl.cast<float>();
-//            IFUCKEDUP(curl);
         }
         else {
-            // show velocity instead of curl
+            // PLOT VELOCITY
             MatrixXd l2Mat = (ux.array().square() + uy.array().square()).sqrt().matrix();
-//            std::cout << "OK: " << l2Mat << std::endl;
-            // TODO: SOMETHING WRONG WITH BOTH UX AND UY: SHEARED/ROTATED MATRIX
+            // (100, 400)
             float_matrix = l2Mat.cast<float>();
-            IFUCKEDUP(l2Mat);
-
         }
+
+        const static int cols = static_cast<int>(float_matrix.cols());
+        const static int rows = static_cast<int>(float_matrix.rows());
 
         auto end = std::chrono::steady_clock::now();
         auto duration = end - start;
         auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds> (duration);
 
-//        printf("Elapsed time: %lld ms\n", elapsed_ms.count());
-
         // fps
         double currentTime = glfwGetTime();
         frameCount++;
-        if (currentTime - lastTime >= 1.0) {
+        if (currentTime - lastTime >= FPS_INTERVAL) {
             double fps = static_cast<double>(frameCount) / (currentTime - lastTime);
-//            printf("Current FPS: %.2f\n", fps);
+            printf("Current FPS: %.2f\n", fps);
 
             frameCount = 0;
             lastTime = currentTime;
